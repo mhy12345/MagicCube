@@ -1,5 +1,5 @@
 //头文件，不需要知道含义
-#include "MagicCube.h"
+#include "MagicCube.hpp"
 using namespace std;
 //define A B 意思是将下文中A替换为B，方便理解
 //定义步骤列表
