@@ -1,0 +1,328 @@
+#include<iostream>
+#include<cstdio>
+#include<cstring>
+#include<algorithm>
+#include<cmath>
+//头文件，不需要知道含义
+using namespace std;
+//define A B 意思是将下文中A替换为B，方便理解
+//定义步骤列表
+#define STEP_NOTHING 0
+#define STEP_BOTTOM_CROSS 1
+#define STEP_LEVEL_ONE 2
+#define STEP_LEVEL_TWO 3
+#define STEP_TOP_CROSS 4
+#define STEP_FINISH 5
+//定义面编号
+#define FACE_FRONT 0
+#define FACE_RIGHT 1
+#define FACE_BACK 2
+#define FACE_LEFT 3
+#define FACE_TOP 4
+#define FACE_BOTTOM 5
+const char *graph2=
+"+-------+\n"
+"| e e e |\n"
+"| e e e |\n"
+"| e e e |\n"
+"+-------+-------+-------+-------+\n"
+"| a a a | b b b | c c c | d d d |\n"
+"| a a a | b b b | c c c | d d d |\n"
+"| a a a | b b b | c c c | d d d |\n"
+"+-------+-------+-------+-------+\n"
+"| f f f |\n"
+"| f f f |\n"
+"| f f f |\n"
+"+-------+\n";
+
+
+const char *graph[4]=
+{
+"       +-------+\n"
+"      /       /|\n"
+"     /       / |\n"
+"    /       /  |\n"
+"   +-------+   |\n"
+"   |       |   |\n"
+"   | 0 1 2 |   +\n"
+"   | 3 4 5 |  / \n"
+"   | 6 7 8 | /  \n"
+"   |       |/   \n"
+"   +-------+    \n",
+"       +-------+\n"
+"      /       /|\n"
+"     /       / |\n"
+"    /       / 2|\n"
+"   +-------+ 15|\n"
+"   |       |048|\n"
+"   |       |37 +\n"
+"   |       |6 / \n"
+"   |       | /  \n"
+"   |       |/   \n"
+"   +-------+    \n",
+"       +-------+\n"
+"      / 0 1 2 /|\n"
+"     / 3 4 5 / |\n"
+"    / 6 7 8 /  |\n"
+"   +-------+   |\n"
+"   |       |   |\n"
+"   |       |   +\n"
+"   |       |  / \n"
+"   |       | /  \n"
+"   |       |/   \n"
+"   +-------+    \n",
+"       +-------+\n"
+"      / c c c /|\n"
+"     / c c c / |\n"
+"    / c c c / b|\n"
+"   +-------+ bb|\n"
+"   |       |bbb|\n"
+"   | a a a |bb +\n"
+"   | a a a |b / \n"
+"   | a a a | /  \n"
+"   |       |/   \n"
+"   +-------+    \n"};
+const char* alphabet="012345678ghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+class MagicCube
+{
+		private:
+				static const int maxn = 3;//魔方每一面是maxn*maxn，默认3*3
+				static const int neighbors[6][4];
+				static const char* fname[6];
+				static const int trs[6][12][2];
+				int face[6][maxn][maxn];
+		public:
+				void read();//读入魔方
+				void print();
+				void set_face(int x,int y,int z,int t)
+				{
+						face[x][y][z]=t;
+				}
+				void print_face(int faceId=-1)//每调用一次将魔方通过某种方式输出到屏幕上
+				{
+						for (int i=0;i<6;i++)
+						{
+								if (~faceId && i!=faceId)continue;
+								for (int j=0;j<3;j++)
+								{
+										for (int k=0;k<3;k++)
+										{
+												printf("%d ",face[i][j][k]);
+										}
+										printf("\n");
+								}
+								printf("\n");
+						}
+				}
+				void print_view(int faceId)
+				{
+						int tface[3]={faceId,neighbors[faceId][0],neighbors[faceId][1]};
+						char res[500];
+						strcpy(res,graph[3]);
+						int l=strlen(res);
+						for (int i=0;i<3;i++)
+						{
+								for (int j=0;j<l;j++)
+								{
+										int t=graph[i][j]-'0';
+										if (t<9 && t>=0)
+												res[j]=alphabet[face[tface[i]][t/3][t%3]];
+								}
+						}
+						printf("%s\n",res);
+				}
+				void print_plane()
+				{
+						char res[500];
+						strcpy(res,graph2);
+						int l=strlen(res);
+						for (int i=0;i<6;i++)
+						{
+								for (int j=0;j<3;j++)
+								{
+										for (int k=0;k<3;k++)
+										{
+												for (int kk=0;kk<l;kk++)
+												{
+														if (res[kk]==i+'a')
+														{
+																res[kk]=alphabet[face[i][j][k]];
+																break;
+														}
+												}
+										}
+								}
+						}
+						printf("%s\n",res);
+				}
+				void print_detail()
+				{
+						printf("------------MagicCubeView------------\n");
+						printf("View A:\n");
+						print_view(0);
+						printf("View B:\n");
+						print_view(2);
+				}
+				void flip(int faceId,int dir)//将第faceId个面旋转，方向为dir，dir取1或-1
+				{
+						MagicCube tmp=*this;
+						for (int j=0;j<3;j++)
+								for (int k=0;k<3;k++)
+										if (dir==1)
+												tmp.set_face(faceId,k,2-j,face[faceId][j][k]);
+										else
+												tmp.set_face(faceId,2-k,j,face[faceId][j][k]);
+						for (int i=0;i<12;i++)
+						{
+								tmp.set_face(trs[faceId][(i+3*dir+12)%12][0],trs[faceId][(i+3*dir+12)%12][1]/3,trs[faceId][(i+3*dir+12)%12][1]%3,
+												face[trs[faceId][i][0]][trs[faceId][i][1]/3][trs[faceId][i][1]%3]);
+					//			printf("(%d,%d)->(%d,%d)\n",trs[faceId][i][0],trs[faceId][i][1],trs[faceId][(i+3*dir+12)%12][0],trs[faceId][(i+3*dir+12)%12][1]);
+						}
+						*this=tmp;
+				}
+				int getStepId()//返回当前在哪个状态，
+				{
+						if (face[FACE_BOTTOM][1][1] != face[FACE_BOTTOM][1][0] ||
+										face[FACE_BOTTOM][1][1] != face[FACE_BOTTOM][1][2] ||
+										face[FACE_BOTTOM][1][1] != face[FACE_BOTTOM][0][1] ||
+										face[FACE_BOTTOM][1][1] != face[FACE_BOTTOM][2][1])
+								return 0;
+						if (face[FACE_BOTTOM][1][1] != face[FACE_BOTTOM][0][0] ||
+										face[FACE_BOTTOM][1][1] != face[FACE_BOTTOM][0][2] ||
+										face[FACE_BOTTOM][1][1] != face[FACE_BOTTOM][2][0] ||
+										face[FACE_BOTTOM][1][1] != face[FACE_BOTTOM][2][2] ||
+										face[FACE_FRONT][1][1] != face[FACE_FRONT][2][0] ||
+										face[FACE_FRONT][1][1] != face[FACE_FRONT][2][1] ||
+										face[FACE_FRONT][1][1] != face[FACE_FRONT][2][2] ||
+										face[FACE_RIGHT][1][1] != face[FACE_RIGHT][2][0] ||
+										face[FACE_RIGHT][1][1] != face[FACE_RIGHT][2][1] ||
+										face[FACE_RIGHT][1][1] != face[FACE_RIGHT][2][2] ||
+										face[FACE_BACK][1][1] != face[FACE_BACK][2][0] ||
+										face[FACE_BACK][1][1] != face[FACE_BACK][2][1] ||
+										face[FACE_BACK][1][1] != face[FACE_BACK][2][2] ||
+										face[FACE_LEFT][1][1] != face[FACE_LEFT][2][0] ||
+										face[FACE_LEFT][1][1] != face[FACE_LEFT][2][1] ||
+										face[FACE_LEFT][1][1] != face[FACE_LEFT][2][2])
+								return 1;
+						if (face[FACE_FRONT][1][1] != face[FACE_FRONT][1][0] ||
+										face[FACE_FRONT][1][1] != face[FACE_FRONT][1][2] ||
+										face[FACE_RIGHT][1][1] != face[FACE_RIGHT][1][0] ||
+										face[FACE_RIGHT][1][1] != face[FACE_RIGHT][1][2] ||
+										face[FACE_BACK][1][1] != face[FACE_BACK][1][0] ||
+										face[FACE_BACK][1][1] != face[FACE_BACK][1][2] ||
+										face[FACE_LEFT][1][1] != face[FACE_LEFT][1][0] ||
+										face[FACE_LEFT][1][1] != face[FACE_LEFT][1][2])
+								return 2;
+						if (face[FACE_TOP][1][1] != face[FACE_TOP][1][0] ||
+										face[FACE_TOP][1][1] != face[FACE_TOP][1][2] ||
+										face[FACE_TOP][1][1] != face[FACE_TOP][0][1] ||
+										face[FACE_TOP][1][1] != face[FACE_TOP][2][1])
+								return 3;
+						if (face[FACE_TOP][1][1] != face[FACE_TOP][0][0] ||
+										face[FACE_TOP][1][1] != face[FACE_TOP][0][2] ||
+										face[FACE_TOP][1][1] != face[FACE_TOP][2][0] ||
+										face[FACE_TOP][1][1] != face[FACE_TOP][2][2])
+								return 4;
+						return 5;
+				}
+				void rotate(int dir)
+				{
+						MagicCube tmp=*this;
+						for (int j=0;j<3;j++)
+								for (int k=0;k<3;k++)
+										if (dir==1)
+										{
+												tmp.set_face(FACE_TOP,k,2-j,face[FACE_TOP][j][k]);
+												tmp.set_face(FACE_BOTTOM,k,2-j,face[FACE_BOTTOM][j][k]);
+										}
+										else
+										{
+												tmp.set_face(FACE_TOP,2-k,j,face[FACE_TOP][j][k]);
+												tmp.set_face(FACE_BOTTOM,2-k,j,face[FACE_BOTTOM][j][k]);
+										}
+						for (int i=0;i<4;i++)
+								for (int j=0;j<3;j++)
+										for (int k=0;k<3;k++)
+												tmp.set_face((i+4+dir)%4,j,k,face[i][j][k]);
+						*this = tmp;
+				}
+				//0.STEP_NOTHING 啥都没有 
+				//1.STEP_BOTTOM_CROSS 底面十字架完成，
+				//2.STEP_LEVEL_ONE 一面一层，
+				//3.STEP_LEVEL_TWO 一面两层，
+				//4.STEP_LEVEL_THREE 顶面十字架完成，
+				//5.STEP_FINISH 完成
+				void doStep0()
+				{
+						int times=4;
+						while (times--)
+						{
+						}
+				}
+				void doStep1();
+				void doStep2();
+				void doStep3();
+				void doStep4();
+				void doDisturb(int times=10)//对于初始魔方随机打乱，默认打乱十次
+				{
+						while (times--)
+						{
+								int x,y;
+								x=rand()%6;
+								y=rand()%2?-1:1;
+								flip(x,y);
+						}
+				}
+				void initial()
+				{
+						for (int i=0;i<6;i++)
+								for (int j=0;j<3;j++)
+										for (int k=0;k<3;k++)
+												face[i][j][k]=i;
+				}
+				void initial_unique()
+				{
+						for (int i=0;i<6;i++)
+								for (int j=0;j<3;j++)
+										for (int k=0;k<3;k++)
+												face[i][j][k]=j*3+k+i*9;;
+				}
+				void solve()
+				{
+						int sid;
+						while ((sid = getStepId())!=STEP_FINISH)
+						{
+								if (sid == STEP_NOTHING)
+										doStep0();
+								else if (sid == STEP_BOTTOM_CROSS)
+										doStep1();
+								else if (sid == STEP_LEVEL_ONE)
+										doStep2();
+								else if (sid == STEP_LEVEL_TWO)
+										doStep3();
+								else if (sid == STEP_TOP_CROSS)
+										doStep4();
+						}
+				}
+};
+const int MagicCube::neighbors[6][4]={{1,4,3,5},{2,4,0,5},{3,5,1,4},{2,3,0,1},{0,3,2,1},{3,2,1,0}};
+const char* MagicCube::fname[6]= {"front","right","back","left","top","bottom"};
+const int MagicCube::trs[6][12][2]={
+		{{1,0},{1,3},{1,6},{5,2},{5,1},{5,0},{3,8},{3,5},{3,2},{4,6},{4,7},{4,8}},
+		{{4,8},{4,5},{4,2},{2,0},{2,3},{2,6},{5,8},{5,5},{5,2},{0,8},{0,5},{0,2}},
+		{{4,2},{4,1},{4,0},{3,0},{3,3},{3,6},{5,6},{5,7},{5,8},{1,8},{1,5},{1,2}},
+		{{4,0},{4,3},{4,6},{0,0},{0,3},{0,6},{5,0},{5,3},{5,6},{2,8},{2,5},{2,2}},
+		{{3,2},{3,1},{3,0},{2,2},{2,1},{2,0},{1,2},{1,1},{1,0},{0,2},{0,1},{0,0}},
+		{{0,6},{0,7},{0,8},{1,6},{1,7},{1,8},{2,6},{2,7},{2,8},{3,6},{3,7},{3,8}},
+};
+
+int main()
+{
+		MagicCube mc;
+		//mc.initial_unique();
+		mc.initial();
+		mc.doDisturb();
+		//	mc.flip(5,1);
+		mc.print_plane();
+}
